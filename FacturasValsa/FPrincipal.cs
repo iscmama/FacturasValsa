@@ -9,6 +9,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 
@@ -46,6 +47,7 @@ namespace FacturasValsa
             SqlConnection conn = new SqlConnection(FPrincipal.Conexion);
             //Ahora transaccion
             SqlTransaction Transaccion = null;
+            string QueryInserta = string.Empty;
 
             //Iniciamos el trai
             try
@@ -118,16 +120,25 @@ namespace FacturasValsa
                 //Ya que tenemos los archivos que vamos a tener, leo los XML
                 for (int i = 0; i < dataGridView1.Rows.Count; i++)
                 {
+                    string rfcEmisor = string.Empty;
+                    string nombreEmisor = string.Empty;
+
                     //Se que los XML son los numeros in-pares, pero de igual forma hago validacion
                     String Ruta = dataGridView1.Rows[i].Cells[0].Value.ToString().ToUpper();
+
                     if (Ruta.EndsWith(".XML"))
                     {
                         //Aquí analizo la factura, obiamente en un try por si es un xml que NO es factura
                         Boolean FueFactura = true;
+
                         try
                         {
                             XmlDocument xDoc = new XmlDocument();
-                            xDoc.Load(dataGridView1.Rows[i].Cells[0].Value.ToString());
+
+                            using (StreamReader s = new StreamReader(dataGridView1.Rows[i].Cells[0].Value.ToString()))
+                            {
+                                xDoc.Load(s);
+                            }
 
                             //Inicializo nodo general (Comprobante)
                             XmlNodeList General = xDoc.GetElementsByTagName("cfdi:Comprobante");
@@ -137,7 +148,9 @@ namespace FacturasValsa
                             foreach (XmlElement Nodo in Emisor)
                             {
                                 //RFC emisor es el unico dato que ocupo, pero es obligatorio
-                                dataGridView1.Rows[i].Cells[1].Value = Nodo.GetAttribute("rfc");
+                                dataGridView1.Rows[i].Cells[1].Value = RemoveTroublesomeCharacters(Nodo.GetAttribute("rfc"));
+                                rfcEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("rfc"));
+                                nombreEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("nombre"));
                             }
 
                             //Ahora para los datos del receptor
@@ -146,7 +159,7 @@ namespace FacturasValsa
                             {
                                 //RFC y Razon Social son obligatorios, la direccion es opcional
                                 dataGridView1.Rows[i].Cells[2].Value = Nodo.GetAttribute("rfc");
-                                dataGridView1.Rows[i].Cells[3].Value = Nodo.GetAttribute("nombre");
+                                dataGridView1.Rows[i].Cells[3].Value = RemoveTroublesomeCharacters(Nodo.GetAttribute("nombre"));
 
                                 //Nodo de direccion (opcional)
                                 XmlNodeList DireccionReceptor = ((XmlElement)Receptor[0]).GetElementsByTagName("cfdi:Domicilio");
@@ -155,7 +168,7 @@ namespace FacturasValsa
                                     //Calle receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[4].Value = NodoDireccion.GetAttribute("calle");
+                                        dataGridView1.Rows[i].Cells[4].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("calle"));
                                     }
                                     catch
                                     {
@@ -164,7 +177,7 @@ namespace FacturasValsa
                                     //Numero exterior
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[5].Value = NodoDireccion.GetAttribute("noExterior");
+                                        dataGridView1.Rows[i].Cells[5].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("noExterior"));
                                     }
                                     catch
                                     {
@@ -173,7 +186,7 @@ namespace FacturasValsa
                                     //Colonia receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[6].Value = NodoDireccion.GetAttribute("colonia");
+                                        dataGridView1.Rows[i].Cells[6].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("colonia"));
                                     }
                                     catch
                                     {
@@ -182,7 +195,7 @@ namespace FacturasValsa
                                     //Localidad receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[7].Value = NodoDireccion.GetAttribute("localidad");
+                                        dataGridView1.Rows[i].Cells[7].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("localidad"));
                                     }
                                     catch
                                     {
@@ -191,7 +204,7 @@ namespace FacturasValsa
                                     //Municipio receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[8].Value = NodoDireccion.GetAttribute("municipio");
+                                        dataGridView1.Rows[i].Cells[8].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("municipio"));
                                     }
                                     catch
                                     {
@@ -200,7 +213,7 @@ namespace FacturasValsa
                                     //Estado receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[9].Value = NodoDireccion.GetAttribute("estado");
+                                        dataGridView1.Rows[i].Cells[9].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("estado"));
                                     }
                                     catch
                                     {
@@ -209,7 +222,7 @@ namespace FacturasValsa
                                     //País receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[10].Value = NodoDireccion.GetAttribute("pais");
+                                        dataGridView1.Rows[i].Cells[10].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("pais"));
                                     }
                                     catch
                                     {
@@ -218,7 +231,7 @@ namespace FacturasValsa
                                     //Codigo postal del receptor
                                     try
                                     {
-                                        dataGridView1.Rows[i].Cells[11].Value = NodoDireccion.GetAttribute("codigoPostal");
+                                        dataGridView1.Rows[i].Cells[11].Value = RemoveTroublesomeCharacters(NodoDireccion.GetAttribute("codigoPostal"));
                                     }
                                     catch
                                     {
@@ -255,7 +268,7 @@ namespace FacturasValsa
                                 try
                                 {
                                     //Comentar el formato de lugar de expedición
-                                    dataGridView1.Rows[i].Cells[14].Value = Nodo.GetAttribute("calle") + " " + Nodo.GetAttribute("noExterior") + ", " + Nodo.GetAttribute("colonia") + ", C.P. " + Nodo.GetAttribute("codigoPostal") + ", " + Nodo.GetAttribute("municipio") + ", " + Nodo.GetAttribute("estado") + ", " + Nodo.GetAttribute("pais");
+                                    dataGridView1.Rows[i].Cells[14].Value = RemoveTroublesomeCharacters(Nodo.GetAttribute("calle")) + " " + Nodo.GetAttribute("noExterior") + ", " + RemoveTroublesomeCharacters(Nodo.GetAttribute("colonia")) + ", C.P. " + Nodo.GetAttribute("codigoPostal") + ", " + RemoveTroublesomeCharacters(Nodo.GetAttribute("municipio") + ", " + Nodo.GetAttribute("estado")) + ", " + RemoveTroublesomeCharacters(Nodo.GetAttribute("pais"));
                                 }
                                 catch
                                 {
@@ -350,9 +363,6 @@ namespace FacturasValsa
                             //Numero de cliente
                             dataGridView1.Rows[i].Cells[29].Value = "";
 
-
-
-
                             //Libero memoria, limpio variables
                             General = null;
                             Emisor = null;
@@ -374,10 +384,28 @@ namespace FacturasValsa
                                     dataGridView1.Rows[i].Cells[24].Value = ArregloEmpresas[1];
                                 }
                             }
+
+                            // Se agrego implementación para registrar y procesar nueva empresa.
+                            if (dataGridView1.Rows[i].Cells[24].Value == null)
+                            {
+                                LogErrores.Message(string.Format("No se encontro el RFC {0} en las Empresas Registradas. Se registrara en la bd", dataGridView1.Rows[i].Cells[1].Value.ToString().ToUpper()));
+                                RegistrarEmpresa(rfcEmisor, nombreEmisor);
+                                ListaEmpresas = ConsultarEmpresas();
+
+                                for (int j = 0; j < ListaEmpresas.Count; j++)
+                                {
+                                    String[] ArregloEmpresas = ListaEmpresas[j].Split(',');
+
+                                    if (dataGridView1.Rows[i].Cells[1].Value.ToString().ToUpper().Equals(ArregloEmpresas[0]))
+                                    {
+                                        dataGridView1.Rows[i].Cells[24].Value = ArregloEmpresas[1];
+                                    }
+                                }
+                            }
+
                             //Verifico que haya encontrado dato
                             if (dataGridView1.Rows[i].Cells[24].Value == null)
                             {
-                                LogErrores.Message(string.Format("No se encontro el RFC {0} en las Empresas Registradas", dataGridView1.Rows[i].Cells[1].Value.ToString().ToUpper()));
                                 FueFactura = false;
                             }
                             else
@@ -422,7 +450,7 @@ namespace FacturasValsa
                                 }
                             }
                         }
-                        catch(Exception ex)
+                        catch (Exception ex)
                         {
                             LogErrores.Write(string.Format("Error al consultar la información del cliente"), ex);
                             FueFactura = false;
@@ -477,7 +505,7 @@ namespace FacturasValsa
                     }
                 }
 
-                //Ya que asigne nombres, ahora si muevo            
+                //Ya que asigne nombres, ahora si muevo
                 for (int i = 0; i < dataGridView1.Rows.Count; i++)
                 {
                     //Checo si es correcta
@@ -490,7 +518,7 @@ namespace FacturasValsa
                             if (!File.Exists(dataGridView1.Rows[i].Cells[28].Value.ToString()))
                             {
                                 //Si no existe guardo datos
-                                String QueryInserta = "";
+                                QueryInserta = string.Empty;
                                 QueryInserta += "INSERT INTO Facturas(Id_Empresa, Id_Cliente, Razon_Social, Calle, Numero_Exterior, Colonia, Localidad, Municipio, Estado, País, Codigo_Postal, Serie, Folio, Lugar_Expedicion, Tipo_Comprobante, Fecha_Emision, Condiciones_Pago, Metodo_Pago, Moneda, Tipo_Cambio, Sub_Total, IVA, Total, Ruta_XML, Numero_Cliente, Ruta_PDF) VALUES(";
                                 QueryInserta += "'" + DepuraComilla(dataGridView1.Rows[i].Cells[24].Value.ToString()) + "', ";
                                 QueryInserta += "'" + DepuraComilla(dataGridView1.Rows[i].Cells[25].Value.ToString()) + "', ";
@@ -554,7 +582,7 @@ namespace FacturasValsa
             }
             catch (Exception ex)
             {
-                LogErrores.Write(string.Format("Error en el método LogicaGeneral con la ruta: {0}", FPrincipal.RutaFacturas), ex);
+                LogErrores.Write(string.Format("Error en el método LogicaGeneral con la ruta: {0} y el script {1}", FPrincipal.RutaFacturas, QueryInserta), ex);
 
                 if (Transaccion != null)
                 {
@@ -575,7 +603,7 @@ namespace FacturasValsa
         {
             try
             {
-                Texto.Replace("'", "''").Trim().ToUpper();
+                Texto = Texto.Replace("'", string.Empty).Trim().ToUpper();
                 return Texto;
             }
             catch
@@ -585,7 +613,7 @@ namespace FacturasValsa
         }
         private void FPrincipal_Load(object sender, EventArgs e)
         {
-            
+
             CheckForIllegalCrossThreadCalls = false;
             //Contador.Start();
             Asincrono.RunWorkerAsync(2000);
@@ -594,12 +622,11 @@ namespace FacturasValsa
 
         private void Contador_Tick(object sender, EventArgs e)
         {
-            if(!Asincrono.IsBusy)
+            if (!Asincrono.IsBusy)
             {
                 Asincrono.RunWorkerAsync(2000);
             }
         }
-
         private void Asincrono_DoWork(object sender, DoWorkEventArgs e)
         {
             //Paramos contador
@@ -610,7 +637,6 @@ namespace FacturasValsa
 
             LogicaGeneral();
         }
-
         private void Asincrono_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             //Borramos residuos
@@ -619,12 +645,10 @@ namespace FacturasValsa
             //Iniciamos contador
             Contador.Start();
         }
-
         private void salirToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.Close();
         }
-
         private void Ocultar()
         {
             IconoApp.Icon = this.Icon;
@@ -638,13 +662,10 @@ namespace FacturasValsa
             IconoApp.BalloonTipText = "Sniffer Valsa se ejecutará en segundo plano";
             IconoApp.ShowBalloonTip(8);
         }
-
-
         private void FPrincipal_Activated(object sender, EventArgs e)
         {
             Ocultar();
         }
-
         private void ValidarLote()
         {
             SqlConnection conn = new SqlConnection(FPrincipal.Conexion);
@@ -660,7 +681,7 @@ namespace FacturasValsa
                 String QueryToca = "SELECT CAST((DATEDIFF(MINUTE, Fecha, GETDATE()) / 1440) AS INT) FROM FechasValidacion;";
                 SqlCommand ComandoToca = new SqlCommand(QueryToca, conn, Transaccion);
                 SqlDataReader LectorToca = ComandoToca.ExecuteReader();
-                if(LectorToca.HasRows)
+                if (LectorToca.HasRows)
                 {
                     while (LectorToca.Read())
                     {
@@ -669,7 +690,7 @@ namespace FacturasValsa
                 }
                 LectorToca.Close();
 
-                if(Dias > 0)
+                if (Dias > 0)
                 {
                     //Primero checo que mes es (si pasa de mayo, solo valido año en curso)
                     String QueryObtieneMes = "SELECT MONTH(GETDATE());";
@@ -709,7 +730,7 @@ namespace FacturasValsa
                 Transaccion.Commit();
                 conn.Close();
             }
-            catch(Exception ex4)
+            catch (Exception ex4)
             {
                 Lista = null;
                 try
@@ -725,11 +746,11 @@ namespace FacturasValsa
             }
 
             //Validamos
-            if(Lista != null)
+            if (Lista != null)
             {
-                if(Lista.Count > 0)
+                if (Lista.Count > 0)
                 {
-                    for(int i = 0; i < Lista.Count; i++)
+                    for (int i = 0; i < Lista.Count; i++)
                     {
                         Lista[i] = Lista[i] + "@" + EsValido(Lista[i].Split('@')[1]);
                     }
@@ -763,7 +784,7 @@ namespace FacturasValsa
                         Transaccion.Commit();
                         conn.Close();
                     }
-                    catch(Exception ex5)
+                    catch (Exception ex5)
                     {
                         try
                         {
@@ -772,7 +793,7 @@ namespace FacturasValsa
                         }
                         catch
                         {
-                            
+
                         }
                         GuardarLog("Validar Lote", ex5.Message);
                     }
@@ -782,7 +803,6 @@ namespace FacturasValsa
             //Limpio variable 
             Lista = null;
         }
-
         private String EsValido(String DatosQR)
         {
             String Retorno = "";
@@ -802,12 +822,10 @@ namespace FacturasValsa
             }
             return Retorno;
         }
-
         private void ContadorValidacion_Tick(object sender, EventArgs e)
         {
             AsincronoValidacion.RunWorkerAsync(2000);
         }
-
         private void AsincronoValidacion_DoWork(object sender, DoWorkEventArgs e)
         {
             ContadorValidacion.Stop();
@@ -815,15 +833,14 @@ namespace FacturasValsa
             //Checamos si corre
             ValidarLote();
         }
-
         private void AsincronoValidacion_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             ContadorValidacion.Start();
         }
-
         private void GuardarLog(String Modulo, String Error)
         {
             SqlConnection conn = null;
+            string Query = string.Empty;
 
             try
             {
@@ -834,13 +851,13 @@ namespace FacturasValsa
                     conn.Open();
                 }
 
-                String Query = "INSERT INTO RegistroLogs(Modulo, Error) VALUES('" + DepuraComilla(Modulo) + "', '" + DepuraComilla(Error) + "');";
+                Query = "INSERT INTO RegistroLogs(Modulo, Error) VALUES('" + DepuraComilla(Modulo) + "', '" + DepuraComilla(Error) + "');";
                 SqlCommand Comando = new SqlCommand(Query, conn);
                 Comando.ExecuteNonQuery();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                LogErrores.Write(string.Format("Error en el método GuardarLog con el Modulo {0} y el Error {1}", Modulo, Error), ex);
+                LogErrores.Write(string.Format("Error en el método GuardarLog con el Modulo {0} y el Error {1} con el script {2}", Modulo, Error, Query), ex);
             }
             finally
             {
@@ -850,7 +867,6 @@ namespace FacturasValsa
                 }
             }
         }
-
         private void DescargarFTP(String FtpUrl, String FileNameToDownload, String userName, String password)
         {
 
@@ -879,12 +895,11 @@ namespace FacturasValsa
                 fs.Close();
                 stream.Close();
             }
-            catch(Exception ex8)
+            catch (Exception ex8)
             {
                 GuardarLog("Descargar FTP", ex8.Message);
             }
         }
-
         private String ObtenerArchivo(String Nombre)
         {
             if (Nombre != null)
@@ -896,17 +911,20 @@ namespace FacturasValsa
                 return "";
             }
         }
-
-
         /*Aqui empieza lo del PDF*/
         private DatosFactura LeerFactura(String Path)
         {
             DatosFactura DatFac = new DatosFactura();
+
             try
             {
                 //Leemos XML
                 XmlDocument xDoc = new XmlDocument();
-                xDoc.Load(Path);
+
+                using (StreamReader s = new StreamReader(Path))
+                {
+                    xDoc.Load(s);
+                }
 
                 //Inicializo nodo general (Comprobante)
                 XmlNodeList General = xDoc.GetElementsByTagName("cfdi:Comprobante");
@@ -916,7 +934,7 @@ namespace FacturasValsa
                 foreach (XmlElement Nodo in Emisor)
                 {
                     DatFac.RFCEmisor = Nodo.GetAttribute("rfc");
-                    DatFac.NombreEmisor = Nodo.GetAttribute("nombre");
+                    DatFac.NombreEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("nombre"));
                 }
 
                 //Domicilio fiscal del emisor
@@ -925,13 +943,13 @@ namespace FacturasValsa
                 {
                     foreach (XmlElement Nodo in DomicilioEmisor)
                     {
-                        DatFac.CalleEmisor = Nodo.GetAttribute("calle");
+                        DatFac.CalleEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("calle"));
                         DatFac.NumeroExteriorEmisor = Nodo.GetAttribute("noExterior");
                         DatFac.NumeroInteriorEmisor = Nodo.GetAttribute("noInterior");
-                        DatFac.ColoniaEmisor = Nodo.GetAttribute("colonia");
-                        DatFac.MunicipioEmisor = Nodo.GetAttribute("municipio");
-                        DatFac.EstadoEmisor = Nodo.GetAttribute("estado");
-                        DatFac.PaisEmisor = Nodo.GetAttribute("pais");
+                        DatFac.ColoniaEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("colonia"));
+                        DatFac.MunicipioEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("municipio"));
+                        DatFac.EstadoEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("estado"));
+                        DatFac.PaisEmisor = RemoveTroublesomeCharacters(Nodo.GetAttribute("pais"));
                     }
                 }
 
@@ -1021,7 +1039,7 @@ namespace FacturasValsa
                 {
                     DatFac.Serie = Nodo.GetAttribute("serie");
                     DatFac.Folio = Nodo.GetAttribute("folio");
-                    DatFac.LugarExpedicion = Nodo.GetAttribute("LugarExpedicion");
+                    DatFac.LugarExpedicion = RemoveTroublesomeCharacters(Nodo.GetAttribute("LugarExpedicion"));
                     DatFac.FormaPago = Nodo.GetAttribute("formaDePago");
                     DatFac.MetodoPago = Nodo.GetAttribute("metodoDePago");
                     DatFac.NumeroCuenta = Nodo.GetAttribute("NumCtaPago");
@@ -1058,7 +1076,7 @@ namespace FacturasValsa
                 foreach (XmlElement Nodo in Receptor)
                 {
                     DatFac.RFCReceptor = Nodo.GetAttribute("rfc");
-                    DatFac.NombreReceptor = Nodo.GetAttribute("nombre");
+                    DatFac.NombreReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("nombre"));
                 }
 
                 //Domicilio fiscal del receptor
@@ -1067,13 +1085,13 @@ namespace FacturasValsa
                 {
                     foreach (XmlElement Nodo in DomicilioReceptor)
                     {
-                        DatFac.CalleReceptor = Nodo.GetAttribute("calle");
+                        DatFac.CalleReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("calle"));
                         DatFac.NumeroExteriorReceptor = Nodo.GetAttribute("noExterior");
                         DatFac.NumeroInteriorReceptor = Nodo.GetAttribute("noInterior");
-                        DatFac.ColoniaReceptor = Nodo.GetAttribute("colonia");
-                        DatFac.MunicipioReceptor = Nodo.GetAttribute("municipio");
-                        DatFac.EstadoReceptor = Nodo.GetAttribute("estado");
-                        DatFac.PaisReceptor = Nodo.GetAttribute("pais");
+                        DatFac.ColoniaReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("colonia"));
+                        DatFac.MunicipioReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("municipio"));
+                        DatFac.EstadoReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("estado"));
+                        DatFac.PaisReceptor = RemoveTroublesomeCharacters(Nodo.GetAttribute("pais"));
                         DatFac.CPReceptor = Nodo.GetAttribute("codigoPostal");
                     }
                 }
@@ -1182,7 +1200,7 @@ namespace FacturasValsa
                 CadenaOriginal CadOri = new CadenaOriginal();
                 DatFac.CadenaOriginal = CadOri.GeneradorCadenas(Path, DatFac.Version);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 LogErrores.Write(string.Format("Error en el método LeerFactura con la ruta: {0}", Path), ex);
                 DatFac = null;
@@ -1202,7 +1220,6 @@ namespace FacturasValsa
                 return Texto.ToUpper();
             }
         }
-
         private void Crear(String PathXML)
         {
             try
@@ -1242,12 +1259,11 @@ namespace FacturasValsa
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 LogErrores.Write(string.Format("Error en el método Crear con la ruta: {0}", PathXML), ex);
             }
         }
-
         private PdfPTable TablaCabezal(DatosFactura DatFac)
         {
             try
@@ -1341,12 +1357,12 @@ namespace FacturasValsa
                 tabla.AddCell(celda);
                 return tabla;
             }
-            catch
+            catch (Exception ex)
             {
+                LogErrores.Write("Error en el método TablaCabezal", ex);
                 return null;
             }
         }
-
         private PdfPTable TablaReceptor(DatosFactura DatFac)
         {
             try
@@ -1430,7 +1446,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private PdfPTable TablaExpedidoEn(DatosFactura DatFac)
         {
             try
@@ -1456,7 +1471,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private PdfPTable TablaProductos(DatosFactura DatFac)
         {
             try
@@ -1648,7 +1662,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private PdfPTable TablaFormaDePagoYOtros(DatosFactura DatFac)
         {
             try
@@ -1747,7 +1760,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private PdfPTable TablaTotales(DatosFactura DatFac)
         {
             try
@@ -1841,7 +1853,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private PdfPTable TablaBottom(DatosFactura DatFac)
         {
             try
@@ -1969,7 +1980,6 @@ namespace FacturasValsa
                 return null;
             }
         }
-
         private String ModificarTotal(String Total)
         {
 
@@ -2007,7 +2017,6 @@ namespace FacturasValsa
                 return Total;
             }
         }
-
         private List<String> ListarArchivos()
         {
             List<String> Lista = new List<String>();
@@ -2028,7 +2037,7 @@ namespace FacturasValsa
                     Lista = null;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 LogErrores.Write(string.Format("Error en el método ListarArchivos con la ruta: {0}", FPrincipal.RutaFacturas), ex);
                 Lista = null;
@@ -2036,13 +2045,117 @@ namespace FacturasValsa
 
             return Lista;
         }
-
         private void RecorrerXML()
         {
             foreach (String PathXML in ListaXML)
             {
                 Crear(PathXML);
             }
+        }
+        private string RemoveTroublesomeCharacters(string inString)
+        {
+            if (inString == null) return null;
+
+            StringBuilder newString = new StringBuilder();
+            char ch;
+
+            for (int i = 0; i < inString.Length; i++)
+            {
+
+                ch = inString[i];
+                // remove any characters outside the valid UTF-8 range as well as all control characters
+                // except tabs and new lines
+                //if ((ch < 0x00FD && ch > 0x001F) || ch == '\t' || ch == '\n' || ch == '\r')
+                //if using .NET version prior to 4, use above logic
+                //if (ch == '�')
+                if (XmlConvert.IsXmlChar(ch) && ch != '�') //this method is new in .NET 4
+                {
+                    newString.Append(ch);
+                }
+
+
+            }
+            return newString.ToString();
+
+        }
+
+        private void RegistrarEmpresa(string rfc, string razonSocial)
+        {
+            SqlConnection conn = null;
+
+            try
+            {
+                conn = new SqlConnection(FPrincipal.Conexion);
+
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
+
+                String Query = "IF NOT EXISTS(SELECT * FROM Empresa WHERE RFC = '" + DepuraComilla(rfc) + "') INSERT INTO Empresa(Razon_Social, RFC, Activo) VALUES('" + DepuraComilla(razonSocial) + "', '" + DepuraComilla(rfc) + "', 1);";
+
+                using (SqlCommand command = new SqlCommand(Query, conn))
+                {
+                    command.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogErrores.Write(string.Format("Error en el método RegistrarEmpresa con el RFC {0} y el Razon Social {1}", rfc, razonSocial), ex);
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
+            }
+        }
+        private List<String> ConsultarEmpresas()
+        {
+            SqlConnection conn = null;
+            List<String> ListaEmpresas = new List<String>();
+
+            try
+            {
+                conn = new SqlConnection(FPrincipal.Conexion);
+
+                if (conn.State != ConnectionState.Open)
+                {
+                    conn.Open();
+                }
+
+                String Query = "SELECT UPPER(CONCAT(RFC, ',', Id_Empresa)) AS Empresas FROM Empresa;";
+
+                using (SqlCommand command = new SqlCommand(Query, conn))
+                {
+                    SqlDataReader LectorEmpresas = command.ExecuteReader();
+
+                    if (LectorEmpresas.HasRows)
+                    {
+                        while (LectorEmpresas.Read())
+                        {
+                            ListaEmpresas.Add(LectorEmpresas.GetString(0));
+                        }
+                    }
+
+                    LectorEmpresas.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogErrores.Write("Error en el método ConsultarEmpresas", ex);
+                ListaEmpresas = new List<string>();
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
+            }
+
+            return ListaEmpresas;
         }
     }
 }
